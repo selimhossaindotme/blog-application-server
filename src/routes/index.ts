@@ -5,7 +5,7 @@ const router : Router = Router();
 
 const moduleRoutes = [
     {
-        path: '/posts',
+        path: '/post',
         route: postRouter
     }
 ]
