@@ -1,4 +1,4 @@
-import { PostStatus } from "../../../generated/prisma/enums";
+import { CommentStatus, PostStatus } from "../../../generated/prisma/enums";
 import { PostWhereInput } from "../../../generated/prisma/models";
 import { prisma } from "../../lib/prisma"
 
@@ -72,7 +72,14 @@ const getAllPostService = async (
             [sortBy]: sortOrder
         },
         skip,
-        take: limit
+        take: limit,
+        include: {
+            _count: {
+                select: {
+                    comments: true
+                }
+            }
+        }
     });
 
     const totalPosts = await prisma.post.count({
@@ -108,6 +115,63 @@ const getSinglePostService = async (postId: string) => {
     const postData = await tnx.post.findUnique({
         where: {
             id: postId
+        },
+        include: {
+            comments: {
+                where: {
+                    parentId: null,
+                    status: CommentStatus.APPROVED
+                },
+                include: {
+                    replies: {
+                        where: {
+                            status: CommentStatus.APPROVED
+                        },
+                        orderBy: {
+                            createdAt: "desc"
+                        },
+                        include: {
+                            replies: {
+                                where: {
+                                    status: CommentStatus.APPROVED
+                                },
+                                include: {
+                                    replies: {
+                                        where: {
+                                            status: CommentStatus.APPROVED
+                                        },
+                                        orderBy: {
+                                            createdAt: "asc"
+                                        },
+                                        include: {
+                                            replies: {
+                                                where: {
+                                                    status: CommentStatus.APPROVED
+                                                },
+                                                orderBy: {
+                                                    createdAt: "asc"
+                                                },
+                                                include: {
+                                                    replies: {
+                                                        where: {
+                                                            status: CommentStatus.APPROVED
+                                                        },
+                                                    }      
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            _count: {
+                select: {
+                    comments: true
+                }
+            }
         }
     })
 
