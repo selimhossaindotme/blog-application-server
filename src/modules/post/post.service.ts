@@ -1,10 +1,92 @@
 import { PostStatus } from "../../../generated/prisma/enums";
+import { PostWhereInput } from "../../../generated/prisma/models";
 import { prisma } from "../../lib/prisma"
 
 
-const getAllPostService = async () => {
-    const result = await prisma.post.findMany();
-    return result;
+const getAllPostService = async (
+    {
+        page,
+        limit,
+        sortBy,
+        sortOrder,
+        filters,
+        tags = [],
+        isFeatured
+    }: {
+        page: number;
+        limit: number;
+        sortBy: string;
+        sortOrder: string;
+        filters: Record<string, string>;
+        tags: string[] | [];
+        isFeatured?: boolean | undefined;
+    }
+) => {
+    const { searchTerm } = filters;
+    const skip = (page - 1) * limit;
+    const andCondition: PostWhereInput[] = [];
+
+   if (searchTerm) {
+        andCondition.push({
+            OR: [
+                {
+                    title: {
+                        contains: searchTerm,
+                        mode: "insensitive"
+                    }
+                },
+                {
+                    content: {
+                        contains: searchTerm,
+                        mode: "insensitive"
+                    }
+                },
+                {
+                    tags: {
+                        has: searchTerm
+                    }
+                }
+            ]
+        })
+   }
+
+   if (tags.length > 0) {
+        andCondition.push({
+            tags: {
+                hasEvery: tags as string[]
+            }
+        })
+    }
+
+    if(typeof isFeatured === "boolean"){
+        andCondition.push({
+            isFeatured: isFeatured
+        })
+    }
+    
+    const result = await prisma.post.findMany({
+        where: {
+            AND: andCondition,    
+        },
+         orderBy: {
+            [sortBy]: sortOrder
+        },
+        skip,
+        take: limit
+    });
+
+    const totalPosts = await prisma.post.count({
+        where: {
+            AND: andCondition,
+        },
+         orderBy: {
+            [sortBy]: sortOrder
+        },
+        skip,
+        take: limit
+       
+    })
+    return { result, totalPosts };
 }
 
 // get single post 

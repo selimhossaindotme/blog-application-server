@@ -6,13 +6,29 @@ import { PostStatus } from "../../../generated/prisma/enums";
 
 
 const getAllPosts = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-    const result = await postService.getAllPostService();
-    const totalPosts = result.length;
+    const { page, limit, sortBy, sortOrder, ...filters } = req.query;
+     const tags = req.query.tags ? (req.query.tags as string).split(",") : [];
+    const isFeatured = req.query.isFeatured ? req.query.isFeatured === "true" ? true : req.query.isFeatured === 'false'
+    ? false : undefined
+     : undefined;
+    const result = await postService.getAllPostService({
+        page: Number(page) || 1,
+        limit: Number(limit) || 10,
+        sortBy: sortBy as string || "createdAt",
+        sortOrder: sortOrder as string || "desc",
+        tags,
+        isFeatured,
+        filters: filters as Record<string, string>
+    });
+    
+    
     sendResponse(res, { 
         statusCode: 200,
         success: true,
         meta: {
-            total: totalPosts
+            page: Number(page) || 1,
+            limit: Number(limit) || 10,
+            total: result.totalPosts
         },
         message: "Posts retrieved successfully",
         data: result
